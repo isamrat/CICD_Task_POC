@@ -1,0 +1,2420 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory Name",
+            "defaultValue": "adf-staplessvc-fdpl-ingest-dev01"
+        },
+        "LS_ABLB_AzureStorage_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'LS_ABLB_AzureStorage'"
+        },
+        "LS_AKV_SERVICE_properties_typeProperties_baseUrl": {
+            "type": "string",
+            "defaultValue": "https://akvstaplessvct01.vault.azure.net/"
+        },
+        "LS_AZ_BLOB_STORAGE_properties_typeProperties_connectionString_secretName": {
+            "type": "string",
+            "defaultValue": "storageAccountKey"
+        },
+        "LS_AKV_KeyVaultLinkedService_properties_typeProperties_baseUrl": {
+            "type": "string",
+            "defaultValue": "https://akvstaplessvct01.vault.azure.net/"
+        },
+        "LS_BatchAccount_atategtcst09_properties_typeProperties_accountName": {
+            "type": "string",
+            "defaultValue": "batchsvc"
+        },
+        "LS_BatchAccount_atategtcst09_properties_typeProperties_batchUri": {
+            "type": "string",
+            "defaultValue": "https://batchsvc.eastus2.batch.azure.com"
+        },
+        "DS_Copy_ABLB_RawData_Source_properties_typeProperties_fileName": {
+            "type": "string",
+            "defaultValue": "@item().name"
+        },
+        "DS_Copy_ABLB_RawData_Source_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@pipeline().parameters.rawdata_file_full_path"
+        },
+        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_fileName": {
+            "type": "string",
+            "defaultValue": "@item().name"
+        },
+        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().ABLB_Archive"
+        },
+        "DS_CopySink_ABLB_Preprocess_GZipFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().ABLB_Preprocess"
+        },
+        "DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_fileName": {
+            "type": "string",
+            "defaultValue": "@item().name"
+        },
+        "DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().ABLB_Preprocess"
+        },
+        "DS_CopySink_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().ABLB_Preprocess"
+        },
+        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_fileName": {
+            "type": "string",
+            "defaultValue": "@item().name"
+        },
+        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().ABLB_Landing"
+        },
+        "DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_fileName": {
+            "type": "string",
+            "defaultValue": "@item().name"
+        },
+        "DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().Landing"
+        },
+        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_fileName": {
+            "type": "string",
+            "defaultValue": "@item().name"
+        },
+        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().ABLB_Landing"
+        },
+        "DS_GeMetaData_ABLB_RawData_Source_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@pipeline().parameters.rawdata_file_full_path"
+        },
+        "DS_GetMetadata_ABLB_Landing_AllFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().Input"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Data_Ingestion')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "1)",
+                "activities": [
+                    {
+                        "name": "ACT_GetMetadata_Landing",
+                        "type": "GetMetadata",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataset": {
+                                "referenceName": "DS_GetMetadata_ABLB_Landing_AllFiles",
+                                "type": "DatasetReference",
+                                "parameters": {
+                                    "Input": "@pipeline().parameters.landing_file_full_path"
+                                }
+                            },
+                            "fieldList": [
+                                "childItems"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ACT_Filter_Text_Files",
+                        "type": "Filter",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_GetMetadata_Landing",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_GetMetadata_Landing').output.childItems",
+                                "type": "Expression"
+                            },
+                            "condition": {
+                                "value": "@endswith(item().name,'.txt')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ACT_Filter_Zip_Files",
+                        "type": "Filter",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_GetMetadata_Landing",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_GetMetadata_Landing').output.childItems",
+                                "type": "Expression"
+                            },
+                            "condition": {
+                                "value": "@endswith(item().name,'.zip')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ACT_Filter_GZip_Files",
+                        "type": "Filter",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_GetMetadata_Landing",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_GetMetadata_Landing').output.childItems",
+                                "type": "Expression"
+                            },
+                            "condition": {
+                                "value": "@endswith(item().name,'.gz')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ACT_ForEach_TextFile",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_Filter_Text_Files",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_Filter_Text_Files').output.value",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "ACT_CopyData_ABLB_Text_LandingToPreprocess",
+                                    "description": "Activity to Copy Data Textfile from Landing To Preprocess Container",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Preprocess_TextFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Preprocess": "@pipeline().parameters.preprocess_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_CopyData_ABLB_Text_LandingToArchive",
+                                    "description": "Activity to Copy Data Textfile from Landing To Archive Container",
+                                    "type": "Copy",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_CopyData_ABLB_Text_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Archive_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Archive": "@pipeline().parameters.archive_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Delete_TextFile_Landing",
+                                    "description": "Activity to delete the Text file in ABLB Landing Container",
+                                    "type": "Delete",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_CopyData_ABLB_Text_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        },
+                                        "enableLogging": false
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ACT_ForEach_ZipFile",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_Filter_Zip_Files",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_Filter_Zip_Files').output.value",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "ACT_Copy_ABLB_Zip_LandingToPreprocess",
+                                    "description": "Activity to Copy Data Zip file from Landing To Preprocess Container",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Preprocess_ZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Preprocess_ZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Preprocess": "@pipeline().parameters.preprocess_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Copy_ABLB_Zip_LandingToArchive",
+                                    "description": "Activity to Copy Data Zip file from Landing To Archive Container",
+                                    "type": "Copy",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_Zip_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Archive_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Archive": "@pipeline().parameters.archive_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Dele_ABLB_Zip_Landing",
+                                    "description": "Activity to delete Data Zip file from Landing Container",
+                                    "type": "Delete",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_Zip_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        },
+                                        "enableLogging": false
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ACT_ForEach_GZipFile",
+                        "description": "Activity ForEach GZip Files",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_Filter_GZip_Files",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_Filter_GZip_Files').output.value",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "ACT_Copy_ABLB_GZIP_LandingToPreprocess",
+                                    "description": "Activity to Copy Data GZip file from Landing To Preprocess Container",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_GZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Preprocess_GZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Preprocess": "@pipeline().parameters.preprocess_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Copy_ABLB_GZIP_LandingToArchive",
+                                    "description": "Activity to Copy Data GZip file from Landing To Archive Container",
+                                    "type": "Copy",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_GZIP_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Archive_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Archive": "@pipeline().parameters.archive_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Delete_ABLB_GZIP_Landing",
+                                    "description": "Activity to delete Data GZip file from Landing Container",
+                                    "type": "Delete",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_GZIP_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        },
+                                        "enableLogging": false
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "parameters": {
+                    "landing_file_full_path": {
+                        "type": "String",
+                        "defaultValue": "landing/EDW"
+                    },
+                    "preprocess_file_full_path": {
+                        "type": "String",
+                        "defaultValue": "preprocess/EDW"
+                    },
+                    "rawdata_file_full_path": {
+                        "type": "String",
+                        "defaultValue": "rawdata/EDW"
+                    },
+                    "archive_file_full_path": {
+                        "type": "string",
+                        "defaultValue": "archive/EDW"
+                    },
+                    "ADLS_Input_file_full_path": {
+                        "type": "string",
+                        "defaultValue": "root/inbound/EDW"
+                    }
+                },
+                "variables": {
+                    "id": {
+                        "type": "String",
+                        "defaultValue": "LogReport_"
+                    },
+                    "File_Name": {
+                        "type": "String",
+                        "defaultValue": "File_Name"
+                    },
+                    "Execute_at": {
+                        "type": "String",
+                        "defaultValue": "Execute_at"
+                    },
+                    "Source_Full_Path": {
+                        "type": "String",
+                        "defaultValue": "Source_Full_Path"
+                    },
+                    "Target_Full_Path": {
+                        "type": "String",
+                        "defaultValue": "Target_Full_Path"
+                    },
+                    "Overwrite": {
+                        "type": "String",
+                        "defaultValue": "Overwrite"
+                    },
+                    "Exception": {
+                        "type": "String",
+                        "defaultValue": "Exception"
+                    },
+                    "IsCosmosDB": {
+                        "type": "Boolean"
+                    }
+                },
+                "folder": {
+                    "name": "PL_FDPL_DATA_INGESTION"
+                },
+                "annotations": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_GetMetadata_ABLB_Landing_AllFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySrc_ABLB_Landing_AnyFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Preprocess_TextFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Archive_AnyFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySrc_ABLB_Preprocess_ZipFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Preprocess_ZipFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySrc_ABLB_Landing_GZipFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Preprocess_GZipFiles')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AKV_SERVICE')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                    "baseUrl": "[parameters('LS_AKV_SERVICE_properties_typeProperties_baseUrl')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AZ_BLOB_STORAGE')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "connectionString": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AKV_SERVICE",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "[parameters('LS_AZ_BLOB_STORAGE_properties_typeProperties_connectionString_secretName')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_SERVICE')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AKV_KeyVaultLinkedService')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "Linked Service to access the Azure Key Vault",
+                "annotations": [],
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                    "baseUrl": "[parameters('LS_AKV_KeyVaultLinkedService_properties_typeProperties_baseUrl')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_ABLB_AzureStorage')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "Linked Service for Azure Blob in AzureStorage",
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "connectionString": "[parameters('LS_ABLB_AzureStorage_connectionString')]",
+                    "accountKey": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AKV_KeyVaultLinkedService",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "stoafsstaplessvct01-key-t01",
+                        "secretVersion": ""
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_KeyVaultLinkedService')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_BatchAccount_atategtcst09')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBatch",
+                "typeProperties": {
+                    "accountName": "[parameters('LS_BatchAccount_atategtcst09_properties_typeProperties_accountName')]",
+                    "accessKey": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AKV_KeyVaultLinkedService",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "batchAccountSVCSecret"
+                    },
+                    "batchUri": "[parameters('LS_BatchAccount_atategtcst09_properties_typeProperties_batchUri')]",
+                    "poolName": "bpoolstaplessvct01",
+                    "linkedServiceName": {
+                        "referenceName": "LS_ABLB_AzureStorage",
+                        "type": "LinkedServiceReference"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]",
+                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_KeyVaultLinkedService')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Copy_ABLB_RawData_Source')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "PL_Data_Ingestion_With_ABLB\nDataSet for Azure Blob Rawdata Source of ACT_Copy",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "fileName": {
+                        "value": "[parameters('DS_Copy_ABLB_RawData_Source_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_Copy_ABLB_RawData_Source_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Archive_AnyFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Archive",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Archive": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.archive_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "fileName": {
+                        "value": "[parameters('DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Landing_GZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Landing - GZip File",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_GZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Preprocess": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_GZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_TextFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Preprocess": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "fileName": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_ZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Preprocess": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Landing_AnyFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Landing",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Landing": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "fileName": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Landing_GZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Landing - GZip File",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Landing": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "compression": {
+                        "type": "GZip",
+                        "level": "Fastest"
+                    },
+                    "fileName": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Preprocess_ZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Preprocess\n",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Landing": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "compression": {
+                        "type": "ZipDeflate"
+                    },
+                    "fileName": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_GeMetaData_ABLB_RawData_Source')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "PL_Data_Ingestion_With_ABLB\nDataSet for Azure Blob Rawdata Source of ACT_Copy",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_GeMetaData_ABLB_RawData_Source_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_GetMetadata_ABLB_Landing_AllFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of All file in Azure Storage Blob Container - Landing",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Input": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_GetMetadata_ABLB_Landing_AllFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Data_Ingestion_Logging')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "1. Read Metadata from landing container.\n2. Filter files based on type of file (txt,gzip,zip)\n3. For each type of file read file from landing and place into preprocess and archive location. Also loggin in Cosmos DB and the delete file from source landing container.\n4. Create custom container in raw data layer and load data",
+                "activities": [
+                    {
+                        "name": "ACT_GetMetadata_Landing",
+                        "type": "GetMetadata",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataset": {
+                                "referenceName": "DS_GetMetadata_ABLB_Landing_AllFiles",
+                                "type": "DatasetReference",
+                                "parameters": {
+                                    "Input": "@pipeline().parameters.landing_file_full_path"
+                                }
+                            },
+                            "fieldList": [
+                                "childItems"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ACT_Filter_Text_Files",
+                        "type": "Filter",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_GetMetadata_Landing",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_GetMetadata_Landing').output.childItems",
+                                "type": "Expression"
+                            },
+                            "condition": {
+                                "value": "@endswith(item().name,'.txt')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ACT_Filter_Zip_Files",
+                        "type": "Filter",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_GetMetadata_Landing",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_GetMetadata_Landing').output.childItems",
+                                "type": "Expression"
+                            },
+                            "condition": {
+                                "value": "@endswith(item().name,'.zip')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ACT_Filter_GZip_Files",
+                        "type": "Filter",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_GetMetadata_Landing",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_GetMetadata_Landing').output.childItems",
+                                "type": "Expression"
+                            },
+                            "condition": {
+                                "value": "@endswith(item().name,'.gz')",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ACT_ForEach_TextFile",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_Filter_Text_Files",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_Filter_Text_Files').output.value",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "ACT_CopyData_ABLB_Text_LandingToPreprocess",
+                                    "description": "Activity to Copy Data Textfile from Landing To Preprocess Container",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Preprocess_TextFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Preprocess": "@pipeline().parameters.preprocess_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_CopyData_ABLB_Text_LandingToArchive",
+                                    "description": "Activity to Copy Data Textfile from Landing To Archive Container",
+                                    "type": "Copy",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_CopyData_ABLB_Text_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Archive_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Archive": "@pipeline().parameters.archive_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Delete_TextFile_Landing",
+                                    "description": "Activity to delete the Text file in ABLB Landing Container",
+                                    "type": "Delete",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_CopyData_ABLB_Text_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        },
+                                        "enableLogging": false
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB1",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_CopyData_ABLB_Text_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_TextFile_Landing To Preprocess",
+                                                "description": "Activity to Log Report of Copy Landing to Preprocess  in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB2",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_CopyData_ABLB_Text_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_TextFile_Landing To Archive",
+                                                "description": "Activity to Log Report of Copy Landing To Archive Container  in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB3",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Delete_TextFile_Landing",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_TextFile_Delete Landing",
+                                                "description": "Activity to Log Report of Delete Landing Container  in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ACT_ForEach_ZipFile",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_Filter_Zip_Files",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_Filter_Zip_Files').output.value",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "ACT_Copy_ABLB_Zip_LandingToPreprocess",
+                                    "description": "Activity to Copy Data Zip file from Landing To Preprocess Container",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Preprocess_ZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Preprocess_ZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Preprocess": "@pipeline().parameters.preprocess_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Copy_ABLB_Zip_LandingToArchive",
+                                    "description": "Activity to Copy Data Zip file from Landing To Archive Container",
+                                    "type": "Copy",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_Zip_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Archive_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Archive": "@pipeline().parameters.archive_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Dele_ABLB_Zip_Landing",
+                                    "description": "Activity to delete Data Zip file from Landing Container",
+                                    "type": "Delete",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_Zip_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        },
+                                        "enableLogging": false
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB_LandingToPreprocess_Zip",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_Zip_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_ZipFile_Landing To Preprocess",
+                                                "description": "Activity to create Log Report in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB_LandingToArchieve_Zip",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_Zip_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_ZipFile_Landing To Archive",
+                                                "description": "Activity to create Log Report in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB_LandingDelete_Zip",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Dele_ABLB_Zip_Landing",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_ZipFile_Delete Landing",
+                                                "description": "Activity to create Log Report in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ACT_ForEach_GZipFile",
+                        "description": "Activity ForEach GZip Files",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_Filter_GZip_Files",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('ACT_Filter_GZip_Files').output.value",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "ACT_Copy_ABLB_GZIP_LandingToPreprocess",
+                                    "description": "Activity to Copy Data GZip file from Landing To Preprocess Container",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_GZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Preprocess_GZipFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Preprocess": "@pipeline().parameters.preprocess_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Copy_ABLB_GZIP_LandingToArchive",
+                                    "description": "Activity to Copy Data GZip file from Landing To Archive Container",
+                                    "type": "Copy",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_GZIP_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "BlobSource",
+                                            "recursive": true
+                                        },
+                                        "sink": {
+                                            "type": "BlobSink"
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_CopySink_ABLB_Archive_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Archive": "@pipeline().parameters.archive_file_full_path"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "ACT_Delete_ABLB_GZIP_Landing",
+                                    "description": "Activity to delete Data GZip file from Landing Container",
+                                    "type": "Delete",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_GZIP_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "dataset": {
+                                            "referenceName": "DS_CopySrc_ABLB_Landing_AnyFiles",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "ABLB_Landing": "@pipeline().parameters.landing_file_full_path"
+                                            }
+                                        },
+                                        "enableLogging": false
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB_LandingToPreprocess_GZip",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_GZIP_LandingToPreprocess",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_GZipFile_Landing To Preprocess",
+                                                "description": "Activity to create Log Report in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB_LandingToArchieve_GZip",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Copy_ABLB_GZIP_LandingToArchive",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_GZipFile_Landing To Archive",
+                                                "description": "Activity to create Log Report in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "name": "ACT_IfCondition_IsCosmosDB_LandingDelete_GZip",
+                                    "description": "Activity to check Write Log Report true - Do write Log Report false - Do not write Log Report",
+                                    "type": "IfCondition",
+                                    "dependsOn": [
+                                        {
+                                            "activity": "ACT_Delete_ABLB_GZIP_Landing",
+                                            "dependencyConditions": [
+                                                "Succeeded"
+                                            ]
+                                        }
+                                    ],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@variables('IsCosmosDB')",
+                                            "type": "Expression"
+                                        },
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "ACT_Custom_LogReport_GZipFile_Delete Landing",
+                                                "description": "Activity to create Log Report in Cosmos DB",
+                                                "type": "Custom",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "7.00:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "command": "Create_LogReport_CosmosDB.exe",
+                                                    "resourceLinkedService": {
+                                                        "referenceName": "LS_ABLB_AzureStorage",
+                                                        "type": "LinkedServiceReference"
+                                                    },
+                                                    "folderPath": "edl-scripts/Create_LogReport",
+                                                    "extendedProperties": {
+                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                        "File_Name": "@item().name",
+                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "Overwrite": "-",
+                                                        "Exception": "-"
+                                                    },
+                                                    "referenceObjects": {
+                                                        "linkedServices": [],
+                                                        "datasets": []
+                                                    }
+                                                },
+                                                "linkedServiceName": {
+                                                    "referenceName": "LS_BatchAccount_atategtcst09",
+                                                    "type": "LinkedServiceReference"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ACT_Custom_MoveFile_PreProcesToRawdata",
+                        "description": "Activity Custom_Execute_Batch for execute Dot Net Application to Data Ingestion from Preprocess to Rawdata Container",
+                        "type": "Custom",
+                        "dependsOn": [
+                            {
+                                "activity": "ACT_ForEach_TextFile",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            {
+                                "activity": "ACT_ForEach_ZipFile",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            {
+                                "activity": "ACT_ForEach_GZipFile",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "command": "Data_Ingestion.exe",
+                            "resourceLinkedService": {
+                                "referenceName": "LS_ABLB_AzureStorage",
+                                "type": "LinkedServiceReference"
+                            },
+                            "folderPath": "edl-scripts/Data_Ingestion",
+                            "extendedProperties": {
+                                "SourceContainer": "@pipeline().parameters.preprocess_file_full_path",
+                                "TargetContainer": "@pipeline().parameters.rawdata_file_full_path"
+                            },
+                            "referenceObjects": {
+                                "linkedServices": [],
+                                "datasets": []
+                            }
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "LS_BatchAccount_atategtcst09",
+                            "type": "LinkedServiceReference"
+                        }
+                    }
+                ],
+                "parameters": {
+                    "landing_file_full_path": {
+                        "type": "String",
+                        "defaultValue": "landing/EDW"
+                    },
+                    "preprocess_file_full_path": {
+                        "type": "String",
+                        "defaultValue": "preprocess/EDW"
+                    },
+                    "rawdata_file_full_path": {
+                        "type": "String",
+                        "defaultValue": "rawdata/EDW"
+                    },
+                    "archive_file_full_path": {
+                        "type": "string",
+                        "defaultValue": "archive/EDW"
+                    },
+                    "ADLS_Input_file_full_path": {
+                        "type": "string",
+                        "defaultValue": "root/inbound/EDW"
+                    }
+                },
+                "variables": {
+                    "id": {
+                        "type": "String",
+                        "defaultValue": "LogReport_"
+                    },
+                    "File_Name": {
+                        "type": "String",
+                        "defaultValue": "File_Name"
+                    },
+                    "Execute_at": {
+                        "type": "String",
+                        "defaultValue": "Execute_at"
+                    },
+                    "Source_Full_Path": {
+                        "type": "String",
+                        "defaultValue": "Source_Full_Path"
+                    },
+                    "Target_Full_Path": {
+                        "type": "String",
+                        "defaultValue": "Target_Full_Path"
+                    },
+                    "Overwrite": {
+                        "type": "String",
+                        "defaultValue": "Overwrite"
+                    },
+                    "Exception": {
+                        "type": "String",
+                        "defaultValue": "Exception"
+                    },
+                    "IsCosmosDB": {
+                        "type": "Boolean"
+                    }
+                },
+                "folder": {
+                    "name": "PL_FDPL_DATA_INGESTION"
+                },
+                "annotations": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_GetMetadata_ABLB_Landing_AllFiles')]",
+                "[concat(variables('factoryId'), '/linkedServices/LS_BatchAccount_atategtcst09')]",
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySrc_ABLB_Landing_AnyFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Preprocess_TextFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Archive_AnyFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySrc_ABLB_Preprocess_ZipFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Preprocess_ZipFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySrc_ABLB_Landing_GZipFiles')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Preprocess_GZipFiles')]"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,81 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "adf-staplessvc-fdpl-ingest-dev01"
+        },
+        "LS_ABLB_AzureStorage_connectionString": {
+            "value": ""
+        },
+        "LS_AKV_SERVICE_properties_typeProperties_baseUrl": {
+            "value": "https://akvstaplessvct01.vault.azure.net/"
+        },
+        "LS_AZ_BLOB_STORAGE_properties_typeProperties_connectionString_secretName": {
+            "value": "storageAccountKey"
+        },
+        "LS_AKV_KeyVaultLinkedService_properties_typeProperties_baseUrl": {
+            "value": "https://akvstaplessvct01.vault.azure.net/"
+        },
+        "LS_BatchAccount_atategtcst09_properties_typeProperties_accountName": {
+            "value": "batchsvc"
+        },
+        "LS_BatchAccount_atategtcst09_properties_typeProperties_batchUri": {
+            "value": "https://batchsvc.eastus2.batch.azure.com"
+        },
+        "DS_Copy_ABLB_RawData_Source_properties_typeProperties_fileName": {
+            "value": "@item().name"
+        },
+        "DS_Copy_ABLB_RawData_Source_properties_typeProperties_folderPath": {
+            "value": "@pipeline().parameters.rawdata_file_full_path"
+        },
+        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_fileName": {
+            "value": "@item().name"
+        },
+        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().ABLB_Archive"
+        },
+        "DS_CopySink_ABLB_Preprocess_GZipFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().ABLB_Preprocess"
+        },
+        "DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_fileName": {
+            "value": "@item().name"
+        },
+        "DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().ABLB_Preprocess"
+        },
+        "DS_CopySink_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().ABLB_Preprocess"
+        },
+        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_fileName": {
+            "value": "@item().name"
+        },
+        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().ABLB_Landing"
+        },
+        "DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_fileName": {
+            "value": "@item().name"
+        },
+        "DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().Landing"
+        },
+        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_fileName": {
+            "value": "@item().name"
+        },
+        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().ABLB_Landing"
+        },
+        "DS_GeMetaData_ABLB_RawData_Source_properties_typeProperties_folderPath": {
+            "value": "@pipeline().parameters.rawdata_file_full_path"
+        },
+        "DS_GetMetadata_ABLB_Landing_AllFiles_properties_typeProperties_folderPath": {
+            "value": "@dataset().Input"
+        },
+        "containerUri": {
+            "value": ""
+        },
+        "containerSasToken": {
+            "value": ""
+        }
+    }
+}
