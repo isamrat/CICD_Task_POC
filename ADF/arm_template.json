@@ -5,31 +5,27 @@
         "factoryName": {
             "type": "string",
             "metadata": "Data Factory Name",
-            "defaultValue": "adf-staplessvc-fdpl-ingest-dev01"
+            "defaultValue": "adf-staplessvc-fdpl-ingest-dev1"
         },
         "LS_ABLB_AzureStorage_connectionString": {
             "type": "secureString",
             "metadata": "Secure string for 'connectionString' of 'LS_ABLB_AzureStorage'"
         },
-        "LS_AKV_SERVICE_properties_typeProperties_baseUrl": {
+        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_fileName": {
             "type": "string",
-            "defaultValue": "https://akvstaplessvct01.vault.azure.net/"
+            "defaultValue": "@item().name"
         },
-        "LS_AZ_BLOB_STORAGE_properties_typeProperties_connectionString_secretName": {
+        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_folderPath": {
             "type": "string",
-            "defaultValue": "storageAccountKey"
+            "defaultValue": "@dataset().ABLB_Landing"
         },
-        "LS_AKV_KeyVaultLinkedService_properties_typeProperties_baseUrl": {
+        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_fileName": {
             "type": "string",
-            "defaultValue": "https://akvstaplessvct01.vault.azure.net/"
+            "defaultValue": "@item().name"
         },
-        "LS_BatchAccount_atategtcst09_properties_typeProperties_accountName": {
+        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_folderPath": {
             "type": "string",
-            "defaultValue": "batchsvc"
-        },
-        "LS_BatchAccount_atategtcst09_properties_typeProperties_batchUri": {
-            "type": "string",
-            "defaultValue": "https://batchsvc.eastus2.batch.azure.com"
+            "defaultValue": "@dataset().ABLB_Archive"
         },
         "DS_Copy_ABLB_RawData_Source_properties_typeProperties_fileName": {
             "type": "string",
@@ -39,13 +35,17 @@
             "type": "string",
             "defaultValue": "@pipeline().parameters.rawdata_file_full_path"
         },
-        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_fileName": {
+        "DS_GeMetaData_ABLB_RawData_Source_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@pipeline().parameters.rawdata_file_full_path"
+        },
+        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_fileName": {
             "type": "string",
             "defaultValue": "@item().name"
         },
-        "DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_folderPath": {
+        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath": {
             "type": "string",
-            "defaultValue": "@dataset().ABLB_Archive"
+            "defaultValue": "@dataset().ABLB_Landing"
         },
         "DS_CopySink_ABLB_Preprocess_GZipFiles_properties_typeProperties_folderPath": {
             "type": "string",
@@ -59,17 +59,13 @@
             "type": "string",
             "defaultValue": "@dataset().ABLB_Preprocess"
         },
+        "DS_GetMetadata_ABLB_Landing_AllFiles_properties_typeProperties_folderPath": {
+            "type": "string",
+            "defaultValue": "@dataset().Input"
+        },
         "DS_CopySink_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath": {
             "type": "string",
             "defaultValue": "@dataset().ABLB_Preprocess"
-        },
-        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_fileName": {
-            "type": "string",
-            "defaultValue": "@item().name"
-        },
-        "DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_folderPath": {
-            "type": "string",
-            "defaultValue": "@dataset().ABLB_Landing"
         },
         "DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_fileName": {
             "type": "string",
@@ -79,27 +75,526 @@
             "type": "string",
             "defaultValue": "@dataset().Landing"
         },
-        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_fileName": {
+        "LS_AKV_KeyVaultLinkedService_properties_typeProperties_baseUrl": {
             "type": "string",
-            "defaultValue": "@item().name"
+            "defaultValue": "https://akvstaplessvct1.vault.azure.net/"
         },
-        "DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath": {
+        "LS_AKV_SERVICE_properties_typeProperties_baseUrl": {
             "type": "string",
-            "defaultValue": "@dataset().ABLB_Landing"
+            "defaultValue": "https://akvstaplessvct1.vault.azure.net/"
         },
-        "DS_GeMetaData_ABLB_RawData_Source_properties_typeProperties_folderPath": {
+        "LS_AZ_BLOB_STORAGE_properties_typeProperties_connectionString_secretName": {
             "type": "string",
-            "defaultValue": "@pipeline().parameters.rawdata_file_full_path"
+            "defaultValue": "storageAccountKey"
         },
-        "DS_GetMetadata_ABLB_Landing_AllFiles_properties_typeProperties_folderPath": {
+        "LS_BatchAccount_atategtcst09_properties_typeProperties_accountName": {
             "type": "string",
-            "defaultValue": "@dataset().Input"
+            "defaultValue": "batchsvc"
+        },
+        "LS_BatchAccount_atategtcst09_properties_typeProperties_batchUri": {
+            "type": "string",
+            "defaultValue": "https://batchsvc.eastus2.batch.azure.com"
         }
     },
     "variables": {
         "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
     },
     "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Landing_AnyFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Landing",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Landing": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "fileName": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Landing_GZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Landing - GZip File",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Archive_AnyFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Archive",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Archive": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.archive_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "fileName": {
+                        "value": "[parameters('DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Copy_ABLB_RawData_Source')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "PL_Data_Ingestion_With_ABLB\nDataSet for Azure Blob Rawdata Source of ACT_Copy",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "fileName": {
+                        "value": "[parameters('DS_Copy_ABLB_RawData_Source_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_Copy_ABLB_RawData_Source_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_GeMetaData_ABLB_RawData_Source')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "PL_Data_Ingestion_With_ABLB\nDataSet for Azure Blob Rawdata Source of ACT_Copy",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_GeMetaData_ABLB_RawData_Source_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Preprocess_ZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Preprocess\n",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Landing": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "compression": {
+                        "type": "ZipDeflate"
+                    },
+                    "fileName": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_GZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Preprocess": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_GZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_TextFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Preprocess": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "fileName": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_GetMetadata_ABLB_Landing_AllFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of All file in Azure Storage Blob Container - Landing",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Input": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "format": {
+                        "type": "TextFormat",
+                        "columnDelimiter": ",",
+                        "rowDelimiter": "",
+                        "nullValue": "\\N",
+                        "treatEmptyAsNull": true,
+                        "skipLineCount": 0,
+                        "firstRowAsHeader": false
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_GetMetadata_ABLB_Landing_AllFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_ZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ABLB_Preprocess": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Landing_GZipFiles')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "DataSet of CopyData Azure Blob for Landing - GZip File",
+                "linkedServiceName": {
+                    "referenceName": "LS_ABLB_AzureStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Landing": {
+                        "type": "string",
+                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
+                    }
+                },
+                "folder": {
+                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
+                },
+                "annotations": [],
+                "type": "AzureBlob",
+                "typeProperties": {
+                    "compression": {
+                        "type": "GZip",
+                        "level": "Fastest"
+                    },
+                    "fileName": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_fileName')]",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "[parameters('DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_folderPath')]",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AKV_KeyVaultLinkedService')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "Linked Service to access the Azure Key Vault",
+                "annotations": [],
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                    "baseUrl": "[parameters('LS_AKV_KeyVaultLinkedService_properties_typeProperties_baseUrl')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AKV_SERVICE')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                    "baseUrl": "[parameters('LS_AKV_SERVICE_properties_typeProperties_baseUrl')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_ABLB_AzureStorage')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "Linked Service for Azure Blob in AzureStorage",
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "connectionString": "[parameters('LS_ABLB_AzureStorage_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AZ_BLOB_STORAGE')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "connectionString": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AKV_SERVICE",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "[parameters('LS_AZ_BLOB_STORAGE_properties_typeProperties_connectionString_secretName')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_SERVICE')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_BatchAccount_atategtcst09')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBatch",
+                "typeProperties": {
+                    "accountName": "[parameters('LS_BatchAccount_atategtcst09_properties_typeProperties_accountName')]",
+                    "accessKey": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AKV_KeyVaultLinkedService",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "batchAccountSVCSecret"
+                    },
+                    "batchUri": "[parameters('LS_BatchAccount_atategtcst09_properties_typeProperties_batchUri')]",
+                    "poolName": "bpoolstaplessvct01",
+                    "linkedServiceName": {
+                        "referenceName": "LS_ABLB_AzureStorage",
+                        "type": "LinkedServiceReference"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]",
+                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_KeyVaultLinkedService')]"
+            ]
+        },
         {
             "name": "[concat(parameters('factoryName'), '/PL_Data_Ingestion')]",
             "type": "Microsoft.DataFactory/factories/pipelines",
@@ -704,501 +1199,6 @@
             ]
         },
         {
-            "name": "[concat(parameters('factoryName'), '/LS_AKV_SERVICE')]",
-            "type": "Microsoft.DataFactory/factories/linkedServices",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "annotations": [],
-                "type": "AzureKeyVault",
-                "typeProperties": {
-                    "baseUrl": "[parameters('LS_AKV_SERVICE_properties_typeProperties_baseUrl')]"
-                }
-            },
-            "dependsOn": []
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/LS_AZ_BLOB_STORAGE')]",
-            "type": "Microsoft.DataFactory/factories/linkedServices",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "annotations": [],
-                "type": "AzureBlobStorage",
-                "typeProperties": {
-                    "connectionString": {
-                        "type": "AzureKeyVaultSecret",
-                        "store": {
-                            "referenceName": "LS_AKV_SERVICE",
-                            "type": "LinkedServiceReference"
-                        },
-                        "secretName": "[parameters('LS_AZ_BLOB_STORAGE_properties_typeProperties_connectionString_secretName')]"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_SERVICE')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/LS_AKV_KeyVaultLinkedService')]",
-            "type": "Microsoft.DataFactory/factories/linkedServices",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "Linked Service to access the Azure Key Vault",
-                "annotations": [],
-                "type": "AzureKeyVault",
-                "typeProperties": {
-                    "baseUrl": "[parameters('LS_AKV_KeyVaultLinkedService_properties_typeProperties_baseUrl')]"
-                }
-            },
-            "dependsOn": []
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/LS_ABLB_AzureStorage')]",
-            "type": "Microsoft.DataFactory/factories/linkedServices",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "Linked Service for Azure Blob in AzureStorage",
-                "annotations": [],
-                "type": "AzureBlobStorage",
-                "typeProperties": {
-                    "connectionString": "[parameters('LS_ABLB_AzureStorage_connectionString')]"
-                }
-            },
-            "dependsOn": []
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/LS_BatchAccount_atategtcst09')]",
-            "type": "Microsoft.DataFactory/factories/linkedServices",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "annotations": [],
-                "type": "AzureBatch",
-                "typeProperties": {
-                    "accountName": "[parameters('LS_BatchAccount_atategtcst09_properties_typeProperties_accountName')]",
-                    "accessKey": {
-                        "type": "AzureKeyVaultSecret",
-                        "store": {
-                            "referenceName": "LS_AKV_KeyVaultLinkedService",
-                            "type": "LinkedServiceReference"
-                        },
-                        "secretName": "batchAccountSVCSecret"
-                    },
-                    "batchUri": "[parameters('LS_BatchAccount_atategtcst09_properties_typeProperties_batchUri')]",
-                    "poolName": "bpoolstaplessvct01",
-                    "linkedServiceName": {
-                        "referenceName": "LS_ABLB_AzureStorage",
-                        "type": "LinkedServiceReference"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]",
-                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_KeyVaultLinkedService')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_Copy_ABLB_RawData_Source')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "PL_Data_Ingestion_With_ABLB\nDataSet for Azure Blob Rawdata Source of ACT_Copy",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "fileName": {
-                        "value": "[parameters('DS_Copy_ABLB_RawData_Source_properties_typeProperties_fileName')]",
-                        "type": "Expression"
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_Copy_ABLB_RawData_Source_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Archive_AnyFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "DataSet of CopyData Azure Blob for Archive",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "ABLB_Archive": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.archive_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "fileName": {
-                        "value": "[parameters('DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_fileName')]",
-                        "type": "Expression"
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_CopySink_ABLB_Archive_AnyFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Landing_GZipFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "DataSet of CopyData Azure Blob for Landing - GZip File",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "format": {
-                        "type": "TextFormat",
-                        "columnDelimiter": ",",
-                        "rowDelimiter": "",
-                        "nullValue": "\\N",
-                        "treatEmptyAsNull": true,
-                        "skipLineCount": 0,
-                        "firstRowAsHeader": false
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_GZipFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "ABLB_Preprocess": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "format": {
-                        "type": "TextFormat",
-                        "columnDelimiter": ",",
-                        "rowDelimiter": "",
-                        "nullValue": "\\N",
-                        "treatEmptyAsNull": true,
-                        "skipLineCount": 0,
-                        "firstRowAsHeader": false
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_GZipFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_TextFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "ABLB_Preprocess": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "format": {
-                        "type": "TextFormat",
-                        "columnDelimiter": ",",
-                        "rowDelimiter": "",
-                        "nullValue": "\\N",
-                        "treatEmptyAsNull": true,
-                        "skipLineCount": 0,
-                        "firstRowAsHeader": false
-                    },
-                    "fileName": {
-                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_fileName')]",
-                        "type": "Expression"
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_TextFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySink_ABLB_Preprocess_ZipFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "ABLB_Preprocess": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.preprocess_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "folderPath": {
-                        "value": "[parameters('DS_CopySink_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Landing_AnyFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "DataSet of CopyData Azure Blob for Landing",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "ABLB_Landing": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "fileName": {
-                        "value": "[parameters('DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_fileName')]",
-                        "type": "Expression"
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_CopySrc_ABLB_Landing_AnyFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Landing_GZipFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "DataSet of CopyData Azure Blob for Landing - GZip File",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "Landing": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "compression": {
-                        "type": "GZip",
-                        "level": "Fastest"
-                    },
-                    "fileName": {
-                        "value": "[parameters('DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_fileName')]",
-                        "type": "Expression"
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_CopySrc_ABLB_Landing_GZipFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_CopySrc_ABLB_Preprocess_ZipFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "DataSet of CopyData Azure Blob for Preprocess\n",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "ABLB_Landing": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "compression": {
-                        "type": "ZipDeflate"
-                    },
-                    "fileName": {
-                        "value": "[parameters('DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_fileName')]",
-                        "type": "Expression"
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_CopySrc_ABLB_Preprocess_ZipFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_GeMetaData_ABLB_RawData_Source')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "PL_Data_Ingestion_With_ABLB\nDataSet for Azure Blob Rawdata Source of ACT_Copy",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "format": {
-                        "type": "TextFormat",
-                        "columnDelimiter": ",",
-                        "rowDelimiter": "",
-                        "treatEmptyAsNull": true,
-                        "skipLineCount": 0,
-                        "firstRowAsHeader": false
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_GeMetaData_ABLB_RawData_Source_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
-            "name": "[concat(parameters('factoryName'), '/DS_GetMetadata_ABLB_Landing_AllFiles')]",
-            "type": "Microsoft.DataFactory/factories/datasets",
-            "apiVersion": "2018-06-01",
-            "properties": {
-                "description": "DataSet of All file in Azure Storage Blob Container - Landing",
-                "linkedServiceName": {
-                    "referenceName": "LS_ABLB_AzureStorage",
-                    "type": "LinkedServiceReference"
-                },
-                "parameters": {
-                    "Input": {
-                        "type": "string",
-                        "defaultValue": "@pipeline().parameters.landing_file_full_path"
-                    }
-                },
-                "folder": {
-                    "name": "FLD_DynPath_ABLB_To_ADLS_DI"
-                },
-                "annotations": [],
-                "type": "AzureBlob",
-                "typeProperties": {
-                    "format": {
-                        "type": "TextFormat",
-                        "columnDelimiter": ",",
-                        "rowDelimiter": "",
-                        "nullValue": "\\N",
-                        "treatEmptyAsNull": true,
-                        "skipLineCount": 0,
-                        "firstRowAsHeader": false
-                    },
-                    "folderPath": {
-                        "value": "[parameters('DS_GetMetadata_ABLB_Landing_AllFiles_properties_typeProperties_folderPath')]",
-                        "type": "Expression"
-                    }
-                }
-            },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]"
-            ]
-        },
-        {
             "name": "[concat(parameters('factoryName'), '/PL_Data_Ingestion_Logging')]",
             "type": "Microsoft.DataFactory/factories/pipelines",
             "apiVersion": "2018-06-01",
@@ -1479,11 +1479,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -1540,11 +1555,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -1601,11 +1631,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -1805,11 +1850,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -1866,11 +1926,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -1927,11 +2002,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -2132,11 +2222,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -2193,11 +2298,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -2254,11 +2374,26 @@
                                                     },
                                                     "folderPath": "edl-scripts/Create_LogReport",
                                                     "extendedProperties": {
-                                                        "id": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
-                                                        "File_Name": "@item().name",
-                                                        "Execute_at": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
-                                                        "Source_Full_Path": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
-                                                        "Target_Full_Path": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                        "id": {
+                                                            "value": "@concat(variables('id'),'Copy_LandingToPreprocess_',string(formatDateTime(utcnow(), 'yyyy-MM-dd_HH-mm-ss-fffffff')))",
+                                                            "type": "Expression"
+                                                        },
+                                                        "File_Name": {
+                                                            "value": "@item().name",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Execute_at": {
+                                                            "value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss:fffffff')",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Source_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.landing_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
+                                                        "Target_Full_Path": {
+                                                            "value": "@concat(pipeline().parameters.preprocess_file_full_path,'/',item().name)",
+                                                            "type": "Expression"
+                                                        },
                                                         "Overwrite": "-",
                                                         "Exception": "-"
                                                     },
@@ -2318,8 +2453,14 @@
                             },
                             "folderPath": "edl-scripts/Data_Ingestion",
                             "extendedProperties": {
-                                "SourceContainer": "@pipeline().parameters.preprocess_file_full_path",
-                                "TargetContainer": "@pipeline().parameters.rawdata_file_full_path"
+                                "SourceContainer": {
+                                    "value": "@pipeline().parameters.preprocess_file_full_path",
+                                    "type": "Expression"
+                                },
+                                "TargetContainer": {
+                                    "value": "@pipeline().parameters.rawdata_file_full_path",
+                                    "type": "Expression"
+                                }
                             },
                             "referenceObjects": {
                                 "linkedServices": [],
@@ -2394,8 +2535,8 @@
             },
             "dependsOn": [
                 "[concat(variables('factoryId'), '/datasets/DS_GetMetadata_ABLB_Landing_AllFiles')]",
-                "[concat(variables('factoryId'), '/linkedServices/LS_BatchAccount_atategtcst09')]",
                 "[concat(variables('factoryId'), '/linkedServices/LS_ABLB_AzureStorage')]",
+                "[concat(variables('factoryId'), '/linkedServices/LS_BatchAccount_atategtcst09')]",
                 "[concat(variables('factoryId'), '/datasets/DS_CopySrc_ABLB_Landing_AnyFiles')]",
                 "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Preprocess_TextFiles')]",
                 "[concat(variables('factoryId'), '/datasets/DS_CopySink_ABLB_Archive_AnyFiles')]",
