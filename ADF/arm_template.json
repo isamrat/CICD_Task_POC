@@ -761,21 +761,10 @@
                 "annotations": [],
                 "type": "AzureBlobStorage",
                 "typeProperties": {
-                    "connectionString": "[parameters('LS_ABLB_AzureStorage_connectionString')]",
-                    "accountKey": {
-                        "type": "AzureKeyVaultSecret",
-                        "store": {
-                            "referenceName": "LS_AKV_KeyVaultLinkedService",
-                            "type": "LinkedServiceReference"
-                        },
-                        "secretName": "stoafsstaplessvct01-key-t01",
-                        "secretVersion": ""
-                    }
+                    "connectionString": "[parameters('LS_ABLB_AzureStorage_connectionString')]"
                 }
             },
-            "dependsOn": [
-                "[concat(variables('factoryId'), '/linkedServices/LS_AKV_KeyVaultLinkedService')]"
-            ]
+            "dependsOn": []
         },
         {
             "name": "[concat(parameters('factoryName'), '/LS_BatchAccount_atategtcst09')]",
